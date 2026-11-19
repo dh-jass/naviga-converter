@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shopify ⇄ Naviga File Converter</title>
+<style>
+  :root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--muted:#6b6a65;--line:#e4e2dc;--accent:#2f5d50;--accent-soft:#e7efec;--warn:#9a5b13;--warn-soft:#fbf1e3;--bad:#a23b2c;--bad-soft:#f8e7e4;--ok:#2f6b3a;--ok-soft:#e6f2e8;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  @media (prefers-color-scheme:dark){:root{--bg:#161615;--card:#1f1f1d;--ink:#ecebe7;--muted:#a3a29c;--line:#34332f;--accent:#7fb8a6;--accent-soft:#22302b;--warn:#e0a85a;--warn-soft:#2e2619;--bad:#e58a7c;--bad-soft:#33201d;--ok:#8fcf9b;--ok-soft:#1d2b20}}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{max-width:1080px;margin:0 auto;padding:28px 20px 8px} h1{font-size:22px;margin:0 0 4px} header p{margin:0;color:var(--muted)}
+  .privacy{display:inline-block;margin-top:10px;font-size:13px;background:var(--accent-soft);color:var(--accent);padding:4px 10px;border-radius:99px}
+  nav{max-width:1080px;margin:16px auto 0;padding:0 20px;display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+  nav button{border:0;background:none;padding:10px 14px;font:inherit;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+  nav button[aria-selected=true]{color:var(--ink);border-color:var(--accent);font-weight:600}
+  main{max-width:1080px;margin:0 auto;padding:20px}
+  section{display:none} section.on{display:block}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+  .card h2{font-size:16px;margin:0 0 6px} .card p.sub{margin:0 0 14px;color:var(--muted);font-size:14px}
+  .drop{border:2px dashed var(--line);border-radius:10px;padding:26px;text-align:center;cursor:pointer;transition:.15s;color:var(--muted)}
+  .drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)} .drop strong{color:var(--ink)}
+  .drop input{display:none}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center} .grow{flex:1;min-width:240px}
+  .btn{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:9px 16px;font:inherit;font-weight:600;cursor:pointer}
+  .btn.secondary{background:transparent;color:var(--accent);border:1px solid var(--accent)} .btn:disabled{opacity:.45;cursor:not-allowed}
+  .progress{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin:14px 0 6px;display:none} .progress>div{height:100%;width:0;background:var(--accent);transition:width .1s}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+  .stat{background:var(--bg);border-radius:8px;padding:10px 12px} .stat b{display:block;font-size:20px;font-variant-numeric:tabular-nums} .stat span{font-size:12px;color:var(--muted)}
+  .note{border-radius:8px;padding:10px 12px;margin:10px 0;font-size:14px} .note.warn{background:var(--warn-soft);color:var(--warn)} .note.bad{background:var(--bad-soft);color:var(--bad)} .note.ok{background:var(--ok-soft);color:var(--ok)}
+  .note ul{margin:6px 0 0;padding-left:18px}
+  .tablewrap{overflow:auto;border:1px solid var(--line);border-radius:8px;max-height:340px}
+  table{border-collapse:collapse;font-size:12.5px;width:max-content;min-width:100%} th,td{padding:6px 9px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;font-family:var(--mono)}
+  th{position:sticky;top:0;background:var(--card);font-family:inherit;font-weight:600;z-index:1} td.diff-a{color:var(--bad)} td.diff-b{color:var(--ok)}
+  label{font-size:13px;color:var(--muted);display:block;margin-bottom:4px} input[type=text],input[type=number],select{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--ink);width:100%}
+  .chk{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--ink);margin:6px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px} @media(max-width:720px){.grid2{grid-template-columns:1fr}}
+  .map td{padding:3px} .map input{font-family:var(--mono);font-size:12.5px;padding:5px 7px} .map td:last-child{width:34px}
+  .x{background:none;border:0;color:var(--muted);cursor:pointer;font-size:16px}
+  .verdict{font-size:18px;font-weight:700;padding:14px;border-radius:8px;margin:12px 0}
+  code{font-family:var(--mono);font-size:12.5px;background:var(--bg);padding:1px 5px;border-radius:4px}
+  .muted{color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Shopify ⇄ Naviga File Converter</h1>
+  <p>Turns the Matrixify order export into the Naviga (Magento-layout) order file, and the Naviga shipment file into a Matrixify fulfillment import.</p>
+  <span class="privacy">🔒 Files are processed in this browser tab only. Nothing is uploaded.</span>
+</header>
+<nav role="tablist">
+  <button role="tab" data-tab="orders" aria-selected="true">1 · Orders → Naviga</button>
+  <button role="tab" data-tab="ship">2 · Shipments → Shopify</button>
+  <button role="tab" data-tab="compare">3 · Compare files</button>
+  <button role="tab" data-tab="gen">4 · Test data</button>
+  <button role="tab" data-tab="settings">Settings</button>
+</nav>
+<main>
+
+<section id="orders" class="on">
+  <div class="card">
+    <h2>Matrixify order export → Naviga order file</h2>
+    <p class="sub">Drop the CSV exported from Matrixify (Orders). The output has the same 35 columns, order and formatting as the Magento export that Naviga imports today.</p>
+    <label class="drop" id="dropOrders"><input type="file" accept=".csv,text/csv"><strong>Drop Matrixify Orders CSV here</strong><br>or click to choose a file</label>
+    <div class="progress"><div></div></div><div class="muted status"></div>
+    <div class="result"></div>
+  </div>
+</section>
+
+<section id="ship">
+  <div class="card">
+    <h2>Naviga shipment file → Matrixify fulfillment import</h2>
+    <p class="sub">Drop the shipping confirmation CSV from Naviga. Non-web orders (e.g. <code>C CK 3540</code>) are skipped, and multiple tracking numbers per order are merged.</p>
+    <label class="drop" id="dropShip"><input type="file" accept=".csv,text/csv"><strong>Drop Naviga shipment CSV here</strong><br>or click to choose a file</label>
+    <div class="progress"><div></div></div><div class="muted status"></div>
+    <div class="result"></div>
+  </div>
+</section>
+
+<section id="compare">
+  <div class="card">
+    <h2>Is the outcome the same?</h2>
+    <p class="sub">Compare an expected file (e.g. the real Magento export for a day) with the converter's output for the same orders. Rows are matched by key columns, then compared cell by cell.</p>
+    <div class="grid2">
+      <label class="drop" id="dropA"><input type="file" accept=".csv,text/csv"><strong>A · Expected file</strong><br><span class="fname">e.g. Magento_order102026.csv</span></label>
+      <label class="drop" id="dropB"><input type="file" accept=".csv,text/csv"><strong>B · Converted file</strong><br><span class="fname">output from tab 1 or 2</span></label>
+    </div>
+    <div class="grid2" style="margin-top:14px">
+      <div><label>Match rows by (comma-separated column names; blank = row position)</label><input type="text" id="cmpKeys" value="Order #, ISBN"></div>
+      <div>
+        <label>Options</label>
+        <div class="chk"><input type="checkbox" id="cmpTrim"> Ignore leading/trailing spaces</div>
+        <div class="chk"><input type="checkbox" id="cmpNum"> Treat 19.95 and 19.9500 as equal</div>
+        <div class="chk"><input type="checkbox" id="cmpCase"> Ignore upper/lower case</div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px"><button class="btn" id="cmpRun" disabled>Compare</button><span class="muted">Tip: for the closest test, leave all options unticked.</span></div>
+    <div id="cmpOut"></div>
+  </div>
+</section>
+
+<section id="gen">
+  <div class="card">
+    <h2>Generate large test files</h2>
+    <p class="sub">Creates realistic Matrixify-style order exports and Naviga shipment files of any size. They include multi-book orders, discounts, cancelled orders, notes with commas and line breaks, Canadian postcodes and non-web shipment rows. Use them to stress-test tabs 1 and 2.</p>
+    <div class="grid2">
+      <div>
+        <label>Orders in test export</label>
+        <div class="row"><input type="number" id="genN" value="50000" min="1" style="max-width:160px"><button class="btn secondary" id="genOrders">Generate orders file</button></div>
+        <p class="muted">About 1.75 MB per 1,000 orders (50,000 orders ≈ 88 MB).</p>
+      </div>
+      <div>
+        <label>Rows in test shipment file</label>
+        <div class="row"><input type="number" id="genS" value="50000" min="1" style="max-width:160px"><button class="btn secondary" id="genShip">Generate shipment file</button></div>
+        <p class="muted">PO numbers line up with the generated orders.</p>
+      </div>
+    </div>
+    <div class="muted" id="genStatus"></div>
+  </div>
+</section>
+
+<section id="settings">
+  <div class="card">
+    <h2>Order file rules</h2>
+    <p class="sub">These are saved in this browser. Lookups match when the Shopify value <em>contains</em> the first column (not case-sensitive). The first match wins, and <code>*</code> is the fallback.</p>
+    <div class="grid2">
+      <div><label>ISBN comes from</label><select id="s_isbnSource"><option value="sku">Line SKU</option><option value="barcode">Variant barcode</option></select></div>
+      <div><label>Bill-to Account (fixed)</label><input type="text" id="s_billToAccount"></div>
+      <div><label>Zip prefix</label><input type="text" id="s_zipPrefix"></div>
+      <div><label>Line ending</label><select id="s_lineEnding"><option value="\n">LF (Magento default)</option><option value="\r\n">CRLF (Windows)</option></select></div>
+    </div>
+    <div class="chk"><input type="checkbox" id="s_skipCancelled"> Skip cancelled orders</div>
+    <div class="chk"><input type="checkbox" id="s_skipRemovedLines"> Skip line items removed or refunded to quantity 0</div>
+    <div class="chk"><input type="checkbox" id="s_snapDiscount"> Round Discount % to a whole number when within 0.1% (Shopify rounds discounts to cents)</div>
+    <h2 style="margin-top:18px">Shipping method → Naviga</h2>
+    <table class="map" id="m_shippingMap"><thead><tr><th>Shopify shipping title contains</th><th>Naviga “Shipping Method”</th><th>Shipping Code</th><th></th></tr></thead><tbody></tbody></table>
+    <button class="btn secondary" data-add="shippingMap" style="margin-top:6px">+ Add row</button>
+    <h2 style="margin-top:18px">Payment gateway → Naviga</h2>
+    <table class="map" id="m_paymentMap"><thead><tr><th>Shopify gateway contains</th><th>Naviga “Payment Method”</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+    <button class="btn secondary" data-add="paymentMap" style="margin-top:6px">+ Add row</button>
+  </div>
+  <div class="card">
+    <h2>Shipment file rules</h2>
+    <div class="grid2">
+      <div><label>Shopify order name prefix</label><input type="text" id="s_orderNamePrefix"></div>
+      <div><label>Web order PO pattern (regex). Rows that don't match are skipped.</label><input type="text" id="s_webOrderPattern"></div>
+    </div>
+    <div class="chk"><input type="checkbox" id="s_sendReceipt"> Email the customer their tracking number (Send Receipt = TRUE)</div>
+    <h2 style="margin-top:18px">Carrier</h2>
+    <table class="map" id="m_carrierMap"><thead><tr><th>Ship Method contains</th><th>Tracking company</th><th>Tracking URL ({n} = number)</th><th></th></tr></thead><tbody></tbody></table>
+    <button class="btn secondary" data-add="carrierMap" style="margin-top:6px">+ Add row</button>
+  </div>
+  <div class="row"><button class="btn" id="saveSettings">Save settings</button><button class="btn secondary" id="resetSettings">Reset to defaults</button><span class="muted" id="settingsMsg"></span></div>
+</section>
+</main>
+
+<div id="toast" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;z-index:10"></div>
+<script>
+/* ===== Converter core (shared by the page and the Node tests) ===== */
+var NAVIGA_HEADERS = ["Order #","ISBN","Country","Country ISO","Price","tax total","Discount %","Total","Purchased On","Status","ERP Customer ID","Customer Name","Product Name","Address line1","Address line2","City","State","State ISO","Zip","Email Address","Telephone","Shipping Method","Shipping Code","Qty","shipping total","Payment Method","CC Last4","Invoice total","Gift card credit","Coupon Code","Keycode","check#","PO#","Shipping Instructions","Bill-to Account"];
+var MATRIXIFY_FULFILL_HEADERS = ["Name","Command","Line: Type","Fulfillment: Status","Fulfillment: Tracking Company","Fulfillment: Location","Fulfillment: Tracking Number","Fulfillment: Tracking URL","Fulfillment: Send Receipt"];
+
+var DEFAULT_SETTINGS = {
+  isbnSource: "sku",            // sku | barcode
+  billToAccount: "50",
+  zipPrefix: "z-",
+  skipCancelled: true,
+  skipRemovedLines: true,
+  snapDiscount: true,
+  lineEnding: "\n",
+  // Shopify shipping method title (contains, case-insensitive) -> [Naviga Shipping Method, Shipping Code]
+  shippingMap: [
+    ["Canada", "UPS - UPS Worldwide Express Canada: 5 to 7 business days", "29"],
+    ["UPS Ground", "UPS - UPS Ground: 3 to 8 business days", "1"],
+    ["Free", "Free Shipping - Free Shipping", "60"],
+    ["USPS", "USPS - USPS Delivery: 3 to 8 business days", "60"],
+    ["*", "USPS - USPS Delivery: 3 to 8 business days", "60"]
+  ],
+  // Shopify transaction gateway (contains) -> [Naviga Payment Method, Status]
+  paymentMap: [
+    ["paypal", "payflow_express", "processing"],
+    ["shopify_payments", "payflowpro", "processing_awaiting_shipment"],
+    ["*", "payflowpro", "processing_awaiting_shipment"]
+  ],
+  // Shipment file
+  orderNamePrefix: "#",
+  webOrderPattern: "^\\d+$",
+  sendReceipt: true,
+  carrierMap: [
+    ["UPS", "UPS", "https://www.ups.com/track?tracknum={n}"],
+    ["USPS", "USPS", "https://tools.usps.com/go/TrackConfirmAction?tLabels={n}"],
+    ["FedEx", "FedEx", "https://www.fedex.com/fedextrack/?trknbr={n}"],
+    ["*", "Other", ""]
+  ]
+};
+
+/* ---------- Streaming CSV parser (quotes, commas and newlines inside fields; safe across chunk boundaries) ---------- */
+function CsvParser(onRow) {
+  this.onRow = onRow; this.f = ""; this.row = []; this.inQ = false; this.afterQ = false; this.prevCR = false; this.first = true;
+}
+CsvParser.prototype.push = function (t) {
+  if (this.first) { if (t.charCodeAt(0) === 0xFEFF) t = t.slice(1); this.first = false; }
+  var f = this.f, row = this.row, inQ = this.inQ, afterQ = this.afterQ, prevCR = this.prevCR;
+  var i = 0, n = t.length, c, j;
+  while (i < n) {
+    c = t.charCodeAt(i);
+    if (prevCR) { prevCR = false; if (c === 10) { i++; continue; } }
+    if (inQ) {
+      j = t.indexOf('"', i);
+      if (j === -1) { f += t.slice(i); i = n; break; }
+      f += t.slice(i, j); i = j + 1; inQ = false; afterQ = true; continue;
+    }
+    if (afterQ) { afterQ = false; if (c === 34) { f += '"'; inQ = true; i++; continue; } }
+    if (c === 44) { row.push(f); f = ""; i++; }
+    else if (c === 10 || c === 13) { row.push(f); f = ""; this.onRow(row); row = []; i++; if (c === 13) prevCR = true; }
+    else if (c === 34 && f === "") { inQ = true; i++; }
+    else {
+      j = i + 1;
+      while (j < n) { var d = t.charCodeAt(j); if (d === 44 || d === 10 || d === 13 || d === 34) break; j++; }
+      f += t.slice(i, j); i = j;
+    }
+  }
+  this.f = f; this.row = row; this.inQ = inQ; this.afterQ = afterQ; this.prevCR = prevCR;
+};
+CsvParser.prototype.end = function () {
+  if (this.f !== "" || this.row.length) { this.row.push(this.f); this.onRow(this.row); }
+  this.f = ""; this.row = [];
+};
+
+/* ---------- Helpers ---------- */
+function csvCell(v, quoteMode) {
+  v = v == null ? "" : String(v);
+  if (quoteMode === "all") return '"' + v.replace(/"/g, '""') + '"';
+  // Magento style: quote when the value has whitespace, comma or quote
+  if (/[\s,"]/.test(v)) return '"' + v.replace(/"/g, '""') + '"';
+  return v;
+}
+function csvLine(arr, quoteMode) { return arr.map(function (v) { return csvCell(v, quoteMode); }).join(","); }
+function num(v) { var x = parseFloat(String(v == null ? "" : v).replace(/[^0-9.\-]/g, "")); return isNaN(x) ? 0 : x; }
+function r2(x) { return Math.round((x + Number.EPSILON) * 100) / 100; }
+function f4(x) { return (Math.round((x + Number.EPSILON) * 10000) / 10000).toFixed(4); }
+var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function magentoDate(s) {
+  // "2026-10-19 22:43:11 -0400" -> "Oct 19, 2026 10:43:11 PM" (keeps store-local time as exported)
+  var m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(s || "");
+  if (!m) return s || "";
+  var h = +m[4], ap = h >= 12 ? "PM" : "AM", h12 = h % 12 || 12;
+  return MONTHS[+m[2] - 1] + " " + m[3] + ", " + m[1] + " " + (h12 < 10 ? "0" : "") + h12 + ":" + m[5] + ":" + m[6] + " " + ap;
+}
+function lookup(map, value) {
+  var v = String(value || "").toLowerCase();
+  for (var i = 0; i < map.length; i++) {
+    var k = String(map[i][0]).toLowerCase();
+    if (k !== "*" && k && v.indexOf(k) !== -1) return map[i];
+  }
+  for (var j = 0; j < map.length; j++) if (map[j][0] === "*") return map[j];
+  return null;
+}
+function clean(s) { return String(s == null ? "" : s).replace(/[\r\n]+/g, "").trim(); }
+
+/* ---------- Orders: Matrixify export -> Naviga (Magento layout) ---------- */
+function OrdersConverter(settings, emit) {
+  this.s = settings; this.emit = emit; this.h = null; this.idx = {};
+  this.curId = null; this.rows = [];
+  this.stats = { inputRows: 0, orders: 0, lines: 0, skippedCancelled: 0, skippedRemoved: 0, warnings: [], truncated: false, unknownShipping: {}, unknownGateway: {} };
+}
+OrdersConverter.prototype.row = function (r) {
+  if (!this.h) {
+    this.h = r; for (var i = 0; i < r.length; i++) this.idx[r[i]] = i;
+    var need = ["ID", "Line: Type", "Line: Price", "Line: Quantity"];
+    var missing = need.filter(function (k) { return !(k in this.idx); }, this);
+    if (missing.length) throw new Error("This doesn't look like a Matrixify Orders export. Missing columns: " + missing.join(", "));
+    this.emit(csvLine(NAVIGA_HEADERS) + this.s.lineEnding);
+    return;
+  }
+  if (r.length === 1 && r[0] === "") return;
+  this.stats.inputRows++;
+  var id = r[this.idx["ID"]] || "";
+  if (/YOUR PLAN ALLOWS/i.test(id)) { this.stats.truncated = true; return; }
+  if (!id.trim()) return;
+  if (id !== this.curId) { this.flush(); this.curId = id; }
+  this.rows.push(r);
+};
+OrdersConverter.prototype.g = function (r, k) { var i = this.idx[k]; return i === undefined ? "" : (r[i] == null ? "" : r[i]); };
+OrdersConverter.prototype.flush = function () {
+  var rows = this.rows; this.rows = [];
+  if (!rows.length) return;
+  var s = this.s, g = this.g.bind(this), top = rows[0];
+  this.stats.orders++;
+  if (s.skipCancelled && g(top, "Cancelled At")) { this.stats.skippedCancelled++; return; }
+
+  // order-level facts gathered from every row of the order
+  var shipTitle = "", coupon = "", gateway = "", last4 = "", giftCard = 0;
+  rows.forEach(function (r) {
+    var t = g(r, "Line: Type");
+    if (t === "Shipping Line" && !shipTitle) shipTitle = g(r, "Line: Title") || g(r, "Line: Name");
+    if (t === "Discount" && !coupon) coupon = g(r, "Line: Name") || g(r, "Line: Title");
+    var gw = g(r, "Transaction: Gateway"), kind = g(r, "Transaction: Kind"), st = g(r, "Transaction: Status");
+    if (gw && /sale|authorization|capture/i.test(kind) && (!st || /success/i.test(st))) {
+      if (/gift_card/i.test(gw)) giftCard += num(g(r, "Transaction: Amount"));
+      else { if (!gateway) gateway = gw; if (!last4) last4 = clean(g(r, "Transaction: CC Number")).replace(/\D/g, "").slice(-4); }
+    }
+  });
+  if (!coupon) coupon = g(top, "Discount: Code") || "";
+  var ship = lookup(s.shippingMap, shipTitle) || ["", shipTitle, ""];
+  if (shipTitle && ship[0] === "*") this.stats.unknownShipping[shipTitle] = 1;
+  var pay = lookup(s.paymentMap, gateway) || ["", gateway, "processing"];
+  if (gateway && pay[0] === "*") this.stats.unknownGateway[gateway] = 1;
+
+  var pick = function (a, b) { var x = g(top, a); return x !== "" ? x : g(top, b); };
+  var phone = (g(top, "Shipping: Phone") || g(top, "Phone") || g(top, "Billing: Phone")).replace(/^'/, "");
+  var zip = pick("Shipping: Zip", "Billing: Zip");
+  var poNum = g(top, "Purchase Order Number") || g(top, "Metafield: custom.pay_by_po [single_line_text_field]");
+
+  for (var k = 0; k < rows.length; k++) {
+    var r = rows[k];
+    if (g(r, "Line: Type") !== "Line Item") continue;
+    var qty = num(g(r, "Line: Quantity")) || 1;
+    var cur = g(r, "Line: Current Quantity");
+    if (s.skipRemovedLines && cur !== "" && num(cur) === 0) { this.stats.skippedRemoved++; continue; }
+    var price = num(g(r, "Line: Price"));
+    var disc = Math.abs(num(g(r, "Line: Discount")));
+    var gross = price * qty;
+    var tax = num(g(r, "Line: Tax Total"));
+    var pct = "";
+    if (gross > 0) {
+      var p = disc / gross * 100;
+      if (s.snapDiscount && Math.abs(p - Math.round(p)) < 0.1) p = Math.round(p);
+      pct = f4(p);
+    }
+    var isbn = clean(s.isbnSource === "barcode" ? (g(r, "Line: Variant Barcode") || g(r, "Line: SKU")) : (g(r, "Line: SKU") || g(r, "Line: Variant SKU")));
+    if (!isbn && this.stats.warnings.length < 50) this.stats.warnings.push("Order " + g(top, "Number") + ": line '" + g(r, "Line: Title") + "' has no ISBN/SKU");
+    var out = [
+      g(top, "Number") || String(g(top, "Name")).replace(/^#/, ""),
+      isbn,
+      pick("Shipping: Country", "Billing: Country"),
+      pick("Shipping: Country Code", "Billing: Country Code"),
+      f4(price),
+      f4(tax),
+      pct,
+      f4(r2(gross - disc + tax)),   // Magento Total = row total incl. tax
+      magentoDate(g(top, "Created At")),
+      pay[2],
+      "",
+      pick("Shipping: Name", "Billing: Name"),
+      g(r, "Line: Title"),
+      pick("Shipping: Address 1", "Billing: Address 1"),
+      pick("Shipping: Address 2", "Billing: Address 2"),
+      pick("Shipping: City", "Billing: City"),
+      pick("Shipping: Province", "Billing: Province"),
+      pick("Shipping: Province Code", "Billing: Province Code"),
+      zip ? s.zipPrefix + zip : "",
+      g(top, "Email"),
+      phone,
+      ship[1],
+      ship[2],
+      String(qty),
+      f4(num(g(top, "Price: Total Shipping"))),
+      pay[1],
+      last4,
+      f4(num(g(top, "Price: Total"))),
+      f4(giftCard),
+      coupon,
+      "", "", poNum,
+      clean(g(top, "Note")),
+      s.billToAccount
+    ];
+    this.emit(csvLine(out) + s.lineEnding);
+    this.stats.lines++;
+  }
+};
+OrdersConverter.prototype.end = function () { this.flush(); };
+
+/* ---------- Shipments: Naviga file -> Matrixify fulfillment import ---------- */
+function ShipmentsConverter(settings, emit) {
+  this.s = settings; this.emit = emit; this.h = null; this.idx = {};
+  this.orders = new Map(); this.re = new RegExp(settings.webOrderPattern);
+  this.stats = { inputRows: 0, skippedNonWeb: 0, orders: 0, trackingNumbers: 0, duplicates: 0, warnings: [] };
+}
+ShipmentsConverter.prototype.row = function (r) {
+  if (!this.h) {
+    this.h = r; for (var i = 0; i < r.length; i++) this.idx[r[i].trim()] = i;
+    var need = ["PO Number", "Ups Track Nbr"];
+    var missing = need.filter(function (k) { return !(k in this.idx); }, this);
+    if (missing.length) throw new Error("This doesn't look like the Naviga shipment file. Missing columns: " + missing.join(", "));
+    return;
+  }
+  if (r.length === 1 && r[0] === "") return;
+  this.stats.inputRows++;
+  var po = clean(r[this.idx["PO Number"]]), trk = clean(r[this.idx["Ups Track Nbr"]]);
+  var method = this.idx["Ship Method Description"] !== undefined ? clean(r[this.idx["Ship Method Description"]]) : "";
+  if (!this.re.test(po)) { this.stats.skippedNonWeb++; return; }
+  var o = this.orders.get(po);
+  if (!o) { o = { tracks: [], method: method }; this.orders.set(po, o); }
+  if (!trk) { if (this.stats.warnings.length < 50) this.stats.warnings.push("Order " + po + ": row without tracking number"); return; }
+  if (o.tracks.indexOf(trk) === -1) o.tracks.push(trk); else this.stats.duplicates++;
+};
+ShipmentsConverter.prototype.end = function () {
+  var s = this.s, self = this;
+  this.emit(csvLine(MATRIXIFY_FULFILL_HEADERS) + s.lineEnding);
+  this.orders.forEach(function (o, po) {
+    var c = lookup(s.carrierMap, o.method) || ["", "Other", ""];
+    var url = (o.tracks.length === 1 && c[2]) ? c[2].replace("{n}", encodeURIComponent(o.tracks[0])) : "";
+    self.emit(csvLine([s.orderNamePrefix + po, "UPDATE", "Fulfillment Line", "success", c[1], "", o.tracks.join("; "), url, s.sendReceipt ? "TRUE" : "FALSE"]) + s.lineEnding);
+    self.stats.orders++; self.stats.trackingNumbers += o.tracks.length;
+  });
+};
+
+/* ---------- Compare two CSV files ---------- */
+function Comparer(opts) {
+  this.o = opts; this.A = null; this.B = null;
+}
+function indexFile(rows, keyCols) {
+  var h = rows[0], idx = {}; h.forEach(function (c, i) { idx[c] = i; });
+  var map = new Map(), dupes = 0;
+  for (var i = 1; i < rows.length; i++) {
+    var r = rows[i]; if (r.length === 1 && r[0] === "") continue;
+    var key = keyCols.length ? keyCols.map(function (k) { return idx[k] === undefined ? "" : r[idx[k]]; }).join(" | ") : String(i);
+    var arr = map.get(key); if (!arr) map.set(key, arr = []); else dupes++;
+    arr.push(r);
+  }
+  return { h: h, idx: idx, map: map, rows: rows.length - 1, dupes: dupes };
+}
+function compareCsv(rowsA, rowsB, opts) {
+  var keyCols = (opts.keyCols || []).filter(Boolean);
+  var A = indexFile(rowsA, keyCols), B = indexFile(rowsB, keyCols);
+  var res = { headerSame: A.h.join("\u0001") === B.h.join("\u0001"), onlyA: [], onlyB: [], orderDiff: false,
+    rowsA: A.rows, rowsB: B.rows, matched: 0, identical: 0, missingInB: [], extraInB: [], cellDiffs: 0, byCol: {}, samples: [] };
+  res.onlyA = A.h.filter(function (c) { return !(c in B.idx); });
+  res.onlyB = B.h.filter(function (c) { return !(c in A.idx); });
+  res.orderDiff = !res.headerSame && !res.onlyA.length && !res.onlyB.length;
+  var cols = A.h.filter(function (c) { return c in B.idx; });
+  var norm = function (v) {
+    v = v == null ? "" : String(v);
+    if (opts.trim) v = v.trim();
+    if (opts.ignoreCase) v = v.toLowerCase();
+    if (opts.numeric && /^-?\d+(\.\d+)?$/.test(v.trim())) v = String(parseFloat(v));
+    return v;
+  };
+  A.map.forEach(function (ra, key) {
+    var rb = B.map.get(key);
+    if (!rb) { if (res.missingInB.length < 200) res.missingInB.push(key); res.missingCount = (res.missingCount || 0) + ra.length; return; }
+    var n = Math.min(ra.length, rb.length);
+    for (var i = 0; i < n; i++) {
+      res.matched++; var same = true;
+      cols.forEach(function (c) {
+        var va = ra[i][A.idx[c]], vb = rb[i][B.idx[c]];
+        if (norm(va) !== norm(vb)) {
+          same = false; res.cellDiffs++; res.byCol[c] = (res.byCol[c] || 0) + 1;
+          if (res.samples.length < 300) res.samples.push({ key: key, col: c, a: va == null ? "" : va, b: vb == null ? "" : vb });
+        }
+      });
+      if (same) res.identical++;
+    }
+    if (ra.length > n) res.missingCount = (res.missingCount || 0) + (ra.length - n);
+  });
+  B.map.forEach(function (rb, key) {
+    var ra = A.map.get(key);
+    if (!ra) { if (res.extraInB.length < 200) res.extraInB.push(key); res.extraCount = (res.extraCount || 0) + rb.length; }
+    else if (rb.length > ra.length) res.extraCount = (res.extraCount || 0) + (rb.length - ra.length);
+  });
+  res.missingCount = res.missingCount || 0; res.extraCount = res.extraCount || 0;
+  return res;
+}
+
+/* ---------- Large test-file generators ---------- */
+var GEN_BOOKS = [["9781594770135","Facial Reflexology",19.95],["9781644114162","Three Books of Occult Philosophy",195],["9781644116296","Simple Exercises to Stimulate the Vagus Nerve",19.99],["9781591435181","Nothing in This Book Is True, But It’s Exactly How Things Are",24.99],["9798888503287","FREE -  2025 Complete Titles Catalog",0],["9781644117460","Cats",18.99]];
+var GEN_PEOPLE = [["Jordan Sample","100 Test Street","","Springfield","Illinois","IL","62701","US","United States"],["Alex Example ","25 Demo Ave ","Unit B","Riverton ","Ohio","OH","44094","US","United States"],["Casey Placeholder","Box 12","","Testville","Saskatchewan","SK","S0A 1X0","CA","Canada"],["Morgan Q Dummy Jr.","PO BOX 999","","Faketown","New Jersey","NJ","07424-0337","US","United States"]];
+var GEN_SHIP = ["USPS Delivery","Free Shipping","UPS Ground","UPS Worldwide Express Canada"];
+var GEN_HEADERS = ["ID","Name","Number","Email","Phone","Note","Created At","Cancelled At","Price: Total Shipping","Price: Total","Payment: Status","Shipping: Name","Shipping: Phone","Shipping: Address 1","Shipping: Address 2","Shipping: Zip","Shipping: City","Shipping: Province","Shipping: Province Code","Shipping: Country","Shipping: Country Code","Row #","Top Row","Line: Type","Line: Title","Line: Name","Line: SKU","Line: Quantity","Line: Current Quantity","Line: Price","Line: Discount","Line: Tax Total","Transaction: Kind","Transaction: Status","Transaction: Gateway","Transaction: Amount","Transaction: CC Number","Risk: Message"];
+function generateOrders(nOrders, emit, startNumber) {
+  emit(csvLine(GEN_HEADERS, "all") + "\n");
+  var seed = 7; function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+  for (var o = 0; o < nOrders; o++) {
+    var num = (startNumber || 1100000) + o, p = GEN_PEOPLE[o % GEN_PEOPLE.length];
+    var nLines = 1 + Math.floor(rnd() * 4), discPct = rnd() < 0.2 ? 25 : 0, shipM = GEN_SHIP[o % GEN_SHIP.length];
+    var shipCost = shipM === "Free Shipping" ? 0 : (shipM.indexOf("Canada") > -1 ? 26.5 : 6), sub = 0, lines = [];
+    for (var l = 0; l < nLines; l++) {
+      var b = GEN_BOOKS[Math.floor(rnd() * GEN_BOOKS.length)], q = 1 + (rnd() < 0.1 ? 1 : 0);
+      var d = r2(b[2] * q * discPct / 100); sub += b[2] * q - d; lines.push([b, q, d]);
+    }
+    var total = r2(sub + shipCost), gw = rnd() < 0.4 ? "paypal" : "shopify_payments";
+    var day = 1 + (o % 28), hh = o % 24;
+    var created = "2026-11-" + (day < 10 ? "0" : "") + day + " " + (hh < 10 ? "0" : "") + hh + ":15:30 -0500";
+    var base = ["gid-" + num, "#" + num, String(num), "customer" + o + "@example.com", "", o % 50 === 0 ? "Leave at back door,\nthanks" : "", created, o % 97 === 0 ? created : "", shipCost.toFixed(2), total.toFixed(2), "paid", p[0], "'+1555000" + (o % 1000), p[1], p[2], p[6], p[3], p[4], p[5], p[8], p[7]];
+    var row = 0;
+    lines.forEach(function (x) {
+      row++; emit(csvLine(base.concat([row, row === 1 ? "true" : "", "Line Item", x[0][1], x[0][1], x[0][0], x[1], x[1], x[0][2].toFixed(2), (-x[2]).toFixed(2), "0.00", "", "", "", "", "", row === 1 ? "NEUTRAL: CVV isn't available\nNEUTRAL: \"quoted\", text" : ""]), "all") + "\n");
+    });
+    row++; emit(csvLine(base.concat([row, "", "Shipping Line", shipM, shipM, "", "", "", shipCost.toFixed(2), "", "", "", "", "", "", "", ""]), "all") + "\n");
+    if (discPct) { row++; emit(csvLine(base.concat([row, "", "Discount", "BC225P", "BC225P", "", "", "", "", "", "", "", "", "", "", "", ""]), "all") + "\n"); }
+    row++; emit(csvLine(base.concat([row, "", "Transaction", "", "", "", "", "", "", "", "", "sale", "success", gw, total.toFixed(2), gw === "paypal" ? "" : "•••• " + (1000 + o % 9000), ""]), "all") + "\n");
+  }
+}
+function generateShipments(nRows, emit, startNumber) {
+  emit(csvLine(["Invoice Number","PO Number","Invoice Date","Ups Track Nbr","Ship Method Description"], "all") + "\n");
+  for (var i = 0; i < nRows; i++) {
+    var po = i % 15 === 0 ? "C CK " + (1000 + i) : String((startNumber || 1100000) + Math.floor(i * 0.9));
+    var trk = i % 4 === 0 ? "1Z0699430" + String(342546062 + i) : "9241999993653258" + String(3043893744 + i);
+    emit(csvLine([String(40000 + i), po, "11/19/2026", trk, i % 4 === 0 ? "UPS Ground" : "UPS Mail Innovations"], "all") + "\n");
+  }
+}
+
+if (typeof module !== "undefined") module.exports = { NAVIGA_HEADERS: NAVIGA_HEADERS, DEFAULT_SETTINGS: DEFAULT_SETTINGS, CsvParser: CsvParser, OrdersConverter: OrdersConverter, ShipmentsConverter: ShipmentsConverter, compareCsv: compareCsv, generateOrders: generateOrders, generateShipments: generateShipments, magentoDate: magentoDate, csvLine: csvLine };
+
+
+/* ================= Page logic ================= */
+var STORE_KEY = "naviga-converter-settings-v1";
+var settings = loadSettings();
+function loadSettings(){ var s = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); try { var raw = localStorage.getItem(STORE_KEY); if (raw) Object.assign(s, JSON.parse(raw)); } catch(e){} return s; }
+function $(s, el){ return (el||document).querySelector(s); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+function fmt(n){ return Number(n).toLocaleString(); }
+function mb(b){ return (b/1048576).toFixed(b<10485760?2:1) + " MB"; }
+function stamp(){ var d=new Date(); return String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0")+String(d.getFullYear()).slice(-2); }
+
+/* tabs */
+document.querySelectorAll("nav button").forEach(function(b){ b.onclick = function(){
+  document.querySelectorAll("nav button").forEach(function(x){ x.setAttribute("aria-selected", x===b); });
+  document.querySelectorAll("main section").forEach(function(s){ s.classList.toggle("on", s.id===b.dataset.tab); });
+}; });
+
+/* drop zones */
+function setupDrop(el, onFile){
+  var input = el.querySelector("input");
+  input.onchange = function(){ if (input.files[0]) onFile(input.files[0]); input.value = ""; };
+  el.addEventListener("dragover", function(e){ e.preventDefault(); el.classList.add("over"); });
+  el.addEventListener("dragleave", function(){ el.classList.remove("over"); });
+  el.addEventListener("drop", function(e){ e.preventDefault(); el.classList.remove("over"); if (e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0]); });
+}
+
+/* read a File in 4 MB slices, decode UTF-8 safely across slice edges, and feed the parser */
+async function streamFile(file, onText, onProgress){
+  var CHUNK = 4 * 1024 * 1024, dec = new TextDecoder("utf-8"), pos = 0;
+  while (pos < file.size) {
+    var buf = await file.slice(pos, pos + CHUNK).arrayBuffer();
+    pos += buf.byteLength;
+    onText(dec.decode(buf, { stream: pos < file.size }));
+    onProgress(pos / file.size);
+    await new Promise(function(r){ setTimeout(r, 0); });
+  }
+  var tail = dec.decode(); if (tail) onText(tail);
+}
+
+/* collect output strings efficiently */
+function Collector(){ this.parts = []; this.buf = []; this.preview = []; this.bytes = 0; }
+Collector.prototype.emit = function(s){ if (this.preview.length < 8) this.preview.push(s); this.buf.push(s); this.bytes += s.length; if (this.buf.length >= 20000) { this.parts.push(this.buf.join("")); this.buf = []; } };
+Collector.prototype.blob = function(){ if (this.buf.length) { this.parts.push(this.buf.join("")); this.buf = []; } return new Blob(this.parts, { type: "text/csv;charset=utf-8" }); };
+
+function previewTable(lines){
+  var rows = []; var p = new CsvParser(function(r){ rows.push(r); }); p.push(lines.join("")); p.end();
+  if (!rows.length) return "";
+  var h = "<div class='tablewrap'><table><thead><tr>" + rows[0].map(function(c){ return "<th>"+esc(c)+"</th>"; }).join("") + "</tr></thead><tbody>";
+  rows.slice(1).forEach(function(r){ h += "<tr>" + r.map(function(c){ return "<td>"+esc(c)+"</td>"; }).join("") + "</tr>"; });
+  return h + "</tbody></table></div>";
+}
+/* Downloads: inside claude.ai the page must use the platform's downloads capability; anywhere else
+   (Cloudflare Pages, GitHub Pages, a local file) a normal browser download is used. */
+var dlNS = null;
+(async function(){ try { if (window.claude && typeof window.claude.use === "function") dlNS = await window.claude.use("downloads"); } catch(e){ dlNS = null; } })();
+function toast(msg){ var t = document.getElementById("toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(t._h); t._h = setTimeout(function(){ t.style.display = "none"; }, 5000); }
+async function downloadBlob(blob, name){
+  if (dlNS) {
+    try { await dlNS.save({ filename: name, data: blob }); return; }
+    catch (e) {
+      var code = e && e.code;
+      if (code === "declined") return;
+      if (code === "rate_limited") { toast("A save prompt is already open. Finish it, then try again."); return; }
+      if (code === "too_large") { toast("This file is too large to save from this view. Open the converter from its standalone link."); return; }
+    }
+  }
+  var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+}
+
+async function runConversion(card, file, Conv, outName, renderStats){
+  var bar = $(".progress", card), fill = $(".progress>div", card), status = $(".status", card), result = $(".result", card);
+  result.innerHTML = ""; bar.style.display = "block"; fill.style.width = "0";
+  status.textContent = "Reading " + file.name + " (" + mb(file.size) + ")…";
+  var col = new Collector(), conv = new Conv(settings, function(s){ col.emit(s); });
+  var parser = new CsvParser(function(r){ conv.row(r); });
+  var t0 = performance.now();
+  try {
+    await streamFile(file, function(t){ parser.push(t); }, function(f){ fill.style.width = (f*100).toFixed(1)+"%"; status.textContent = "Converting… " + Math.round(f*100) + "%"; });
+    parser.end(); conv.end();
+  } catch (e) {
+    bar.style.display = "none"; status.textContent = "";
+    result.innerHTML = "<div class='note bad'><b>Couldn't convert this file.</b> " + esc(e.message) + "</div>"; return;
+  }
+  var secs = ((performance.now() - t0)/1000).toFixed(1), blob = col.blob();
+  status.textContent = "Done in " + secs + "s · input " + mb(file.size) + " → output " + mb(blob.size);
+  var html = renderStats(conv.stats);
+  html += "<div class='row' style='margin:12px 0'><button class='btn dl'>Download " + esc(outName) + "</button><span class='muted'>Preview of the first rows:</span></div>";
+  html += previewTable(col.preview);
+  result.innerHTML = html;
+  $(".dl", result).onclick = function(){ downloadBlob(blob, outName); };
+}
+
+function stat(v, l){ return "<div class='stat'><b>" + fmt(v) + "</b><span>" + l + "</span></div>"; }
+
+setupDrop($("#dropOrders"), function(file){
+  runConversion($("#orders .card"), file, OrdersConverter, "Magento_order" + stamp() + ".csv", function(s){
+    var h = "<div class='stats'>" + stat(s.orders, "orders read") + stat(s.lines, "Naviga lines written") + stat(s.skippedCancelled, "cancelled orders skipped") + stat(s.skippedRemoved, "removed lines skipped") + "</div>";
+    if (s.truncated) h += "<div class='note bad'><b>This export was cut short by Matrixify.</b> The file ends with “YOUR PLAN ALLOWS FILE SIZE TILL HERE”, so some orders are missing. Upgrade the Matrixify plan (Basic or higher) and export again.</div>";
+    var us = Object.keys(s.unknownShipping), ug = Object.keys(s.unknownGateway);
+    if (us.length) h += "<div class='note warn'><b>Shipping methods using the fallback (*) rule</b>. Check they map to the right Naviga code in Settings:<ul>" + us.map(function(x){ return "<li>"+esc(x)+"</li>"; }).join("") + "</ul></div>";
+    if (ug.length) h += "<div class='note warn'><b>Payment gateways using the fallback (*) rule</b>. Check them in Settings:<ul>" + ug.map(function(x){ return "<li>"+esc(x)+"</li>"; }).join("") + "</ul></div>";
+    if (s.warnings.length) h += "<div class='note warn'><b>Warnings</b><ul>" + s.warnings.map(function(x){ return "<li>"+esc(x)+"</li>"; }).join("") + "</ul></div>";
+    if (!s.truncated && !us.length && !ug.length && !s.warnings.length) h += "<div class='note ok'>No problems found.</div>";
+    return h;
+  });
+});
+setupDrop($("#dropShip"), function(file){
+  runConversion($("#ship .card"), file, ShipmentsConverter, "Matrixify_fulfillments_" + stamp() + ".csv", function(s){
+    var h = "<div class='stats'>" + stat(s.inputRows, "rows read") + stat(s.orders, "orders to fulfil") + stat(s.trackingNumbers, "tracking numbers") + stat(s.skippedNonWeb, "non-web rows skipped") + stat(s.duplicates, "duplicate rows ignored") + "</div>";
+    if (s.warnings.length) h += "<div class='note warn'><b>Warnings</b><ul>" + s.warnings.map(function(x){ return "<li>"+esc(x)+"</li>"; }).join("") + "</ul></div>";
+    else h += "<div class='note ok'>No problems found.</div>";
+    return h;
+  });
+});
+
+/* compare */
+var cmpFiles = { A: null, B: null };
+function cmpReady(){ $("#cmpRun").disabled = !(cmpFiles.A && cmpFiles.B); }
+setupDrop($("#dropA"), function(f){ cmpFiles.A = f; $("#dropA .fname").textContent = f.name + " · " + mb(f.size); cmpReady(); });
+setupDrop($("#dropB"), function(f){ cmpFiles.B = f; $("#dropB .fname").textContent = f.name + " · " + mb(f.size); cmpReady(); });
+async function readRows(file){ var rows = []; var p = new CsvParser(function(r){ rows.push(r); }); var text = ""; await streamFile(file, function(t){ p.push(t); }, function(){}); p.end(); return rows; }
+async function sameBytes(a, b){
+  if (a.size !== b.size) return false;
+  var CH = 8*1024*1024;
+  for (var pos = 0; pos < a.size; pos += CH) {
+    var x = new Uint8Array(await a.slice(pos, pos+CH).arrayBuffer()), y = new Uint8Array(await b.slice(pos, pos+CH).arrayBuffer());
+    for (var i = 0; i < x.length; i++) if (x[i] !== y[i]) return false;
+  }
+  return true;
+}
+$("#cmpRun").onclick = async function(){
+  var out = $("#cmpOut"); out.innerHTML = "<p class='muted'>Comparing…</p>";
+  try {
+    var t0 = performance.now();
+    var identical = await sameBytes(cmpFiles.A, cmpFiles.B);
+    var A = await readRows(cmpFiles.A), B = await readRows(cmpFiles.B);
+    var keys = $("#cmpKeys").value.split(",").map(function(s){ return s.trim(); }).filter(Boolean);
+    var missingKeys = keys.filter(function(k){ return A[0].indexOf(k) === -1 || B[0].indexOf(k) === -1; });
+    if (missingKeys.length) { out.innerHTML = "<div class='note bad'>Key column(s) not found in both files: " + esc(missingKeys.join(", ")) + "</div>"; return; }
+    var r = compareCsv(A, B, { keyCols: keys, trim: $("#cmpTrim").checked, numeric: $("#cmpNum").checked, ignoreCase: $("#cmpCase").checked });
+    var allSame = r.headerSame && r.cellDiffs === 0 && r.missingCount === 0 && r.extraCount === 0;
+    var h = identical ? "<div class='verdict note ok'>✅ Byte-for-byte identical. Every character, quote and line ending matches.</div>"
+      : allSame ? "<div class='verdict note ok'>✅ Same data. Every row and cell matches" + (($("#cmpTrim").checked||$("#cmpNum").checked||$("#cmpCase").checked) ? " (with the selected options)" : "") + ". The files differ only in formatting such as quoting or line endings.</div>"
+      : "<div class='verdict note bad'>❌ Differences found</div>";
+    h += "<div class='stats'>" + stat(r.rowsA, "rows in A") + stat(r.rowsB, "rows in B") + stat(r.identical, "rows identical") + stat(r.cellDiffs, "cells different") + stat(r.missingCount, "rows only in A") + stat(r.extraCount, "rows only in B") + "</div>";
+    h += "<p class='muted'>Compared in " + ((performance.now()-t0)/1000).toFixed(1) + "s.</p>";
+    if (!r.headerSame) {
+      h += "<div class='note warn'><b>Headers differ.</b>";
+      if (r.orderDiff) h += " Same columns, different order.";
+      if (r.onlyA.length) h += "<br>Only in A: " + r.onlyA.map(esc).join(", ");
+      if (r.onlyB.length) h += "<br>Only in B: " + r.onlyB.map(esc).join(", ");
+      h += "</div>";
+    }
+    var cols = Object.keys(r.byCol);
+    if (cols.length) h += "<h2 style='font-size:15px;margin-top:16px'>Differences by column</h2><div class='tablewrap' style='max-height:220px'><table><thead><tr><th>Column</th><th>Cells different</th></tr></thead><tbody>" + cols.sort(function(a,b){ return r.byCol[b]-r.byCol[a]; }).map(function(c){ return "<tr><td>"+esc(c)+"</td><td>"+fmt(r.byCol[c])+"</td></tr>"; }).join("") + "</tbody></table></div>";
+    if (r.samples.length) h += "<h2 style='font-size:15px;margin-top:16px'>Examples (first " + r.samples.length + ")</h2><div class='tablewrap'><table><thead><tr><th>Row key</th><th>Column</th><th>A · expected</th><th>B · converted</th></tr></thead><tbody>" + r.samples.map(function(d){ return "<tr><td>"+esc(d.key)+"</td><td>"+esc(d.col)+"</td><td class='diff-a'>"+esc(JSON.stringify(d.a))+"</td><td class='diff-b'>"+esc(JSON.stringify(d.b))+"</td></tr>"; }).join("") + "</tbody></table></div>";
+    if (r.missingInB.length) h += "<div class='note warn'><b>Rows only in A</b> (first " + r.missingInB.length + "): " + r.missingInB.slice(0,30).map(esc).join(" · ") + "</div>";
+    if (r.extraInB.length) h += "<div class='note warn'><b>Rows only in B</b> (first " + r.extraInB.length + "): " + r.extraInB.slice(0,30).map(esc).join(" · ") + "</div>";
+    out.innerHTML = h;
+  } catch (e) { out.innerHTML = "<div class='note bad'>Couldn't compare: " + esc(e.message) + "</div>"; }
+};
+
+/* test data */
+async function genFile(kind){
+  var n = Math.max(1, parseInt(kind === "orders" ? $("#genN").value : $("#genS").value, 10) || 1), st = $("#genStatus");
+  st.textContent = "Generating…"; await new Promise(function(r){ setTimeout(r, 30); });
+  var col = new Collector(), t0 = performance.now();
+  if (kind === "orders") generateOrders(n, function(s){ col.emit(s); }); else generateShipments(n, function(s){ col.emit(s); });
+  var blob = col.blob();
+  st.textContent = "Generated " + fmt(n) + (kind === "orders" ? " orders" : " shipment rows") + " (" + mb(blob.size) + ") in " + ((performance.now()-t0)/1000).toFixed(1) + "s.";
+  downloadBlob(blob, kind === "orders" ? "TEST_matrixify_orders_" + n + ".csv" : "TEST_naviga_shipments_" + n + ".csv");
+}
+$("#genOrders").onclick = function(){ genFile("orders"); };
+$("#genShip").onclick = function(){ genFile("ship"); };
+
+/* settings UI */
+var MAPS = ["shippingMap", "paymentMap", "carrierMap"], SCALARS = ["isbnSource","billToAccount","zipPrefix","lineEnding","orderNamePrefix","webOrderPattern"], BOOLS = ["skipCancelled","skipRemovedLines","snapDiscount","sendReceipt"];
+function renderSettings(){
+  SCALARS.forEach(function(k){ var el = $("#s_"+k); el.value = k === "lineEnding" ? (settings[k] === "\r\n" ? "\\r\\n" : "\\n") : settings[k]; });
+  BOOLS.forEach(function(k){ $("#s_"+k).checked = !!settings[k]; });
+  MAPS.forEach(function(m){
+    var tb = $("#m_"+m+" tbody"); tb.innerHTML = "";
+    settings[m].forEach(function(row){ addMapRow(m, row); });
+  });
+}
+function addMapRow(m, row){
+  var tr = document.createElement("tr");
+  tr.innerHTML = [0,1,2].map(function(i){ return "<td><input type='text' value='" + esc(row[i]||"") + "'></td>"; }).join("") + "<td><button class='x' title='Remove'>✕</button></td>";
+  $(".x", tr).onclick = function(){ tr.remove(); };
+  $("#m_"+m+" tbody").appendChild(tr);
+}
+document.querySelectorAll("[data-add]").forEach(function(b){ b.onclick = function(){ addMapRow(b.dataset.add, ["","",""]); }; });
+$("#saveSettings").onclick = function(){
+  SCALARS.forEach(function(k){ var v = $("#s_"+k).value; settings[k] = k === "lineEnding" ? (v === "\\r\\n" ? "\r\n" : "\n") : v; });
+  BOOLS.forEach(function(k){ settings[k] = $("#s_"+k).checked; });
+  MAPS.forEach(function(m){ settings[m] = Array.from(document.querySelectorAll("#m_"+m+" tbody tr")).map(function(tr){ return Array.from(tr.querySelectorAll("input")).map(function(i){ return i.value; }); }).filter(function(r){ return r[0] !== ""; }); });
+  try { new RegExp(settings.webOrderPattern); } catch(e){ $("#settingsMsg").textContent = "Invalid PO pattern: " + e.message; return; }
+  var saved = true; try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch(e){ saved = false; }
+  $("#settingsMsg").textContent = saved ? "Saved." : "Applied for this session (this browser couldn't store them).";
+};
+$("#resetSettings").onclick = function(){ settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); try { localStorage.removeItem(STORE_KEY); } catch(e){} renderSettings(); $("#settingsMsg").textContent = "Defaults restored."; };
+renderSettings();
+</script>
+</body>
+</html>
