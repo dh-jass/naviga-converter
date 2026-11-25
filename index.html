@@ -69,7 +69,7 @@
 <section id="ship">
   <div class="card">
     <h2>Naviga shipment file → Matrixify fulfillment import</h2>
-    <p class="sub">Drop the shipping confirmation CSV from Naviga. Non-web orders (e.g. <code>C CK 3540</code>) are skipped, and multiple tracking numbers per order are merged.</p>
+    <p class="sub">Drop the shipping file from Naviga (e.g. <code>WEB_MF102225.CSV</code>). Rows that aren't web orders (e.g. <code>FOR REVIEW</code>, <code>THANK YOU,DAWN</code>, <code>5071</code>) are skipped, and multiple tracking numbers per order are merged.</p>
     <label class="drop" id="dropShip"><input type="file" accept=".csv,text/csv"><strong>Drop Naviga shipment CSV here</strong><br>or click to choose a file</label>
     <div class="progress"><div></div></div><div class="muted status"></div>
     <div class="result"></div>
@@ -120,36 +120,21 @@
 
 <section id="settings">
   <div class="card">
-    <h2>Order file rules</h2>
-    <p class="sub">These are saved in this browser. Lookups match when the Shopify value <em>contains</em> the first column (not case-sensitive). The first match wins, and <code>*</code> is the fallback.</p>
-    <div class="grid2">
-      <div><label>ISBN comes from</label><select id="s_isbnSource"><option value="sku">Line SKU</option><option value="barcode">Variant barcode</option></select></div>
-      <div><label>Bill-to Account (fixed)</label><input type="text" id="s_billToAccount"></div>
-      <div><label>Zip prefix</label><input type="text" id="s_zipPrefix"></div>
-      <div><label>Line ending</label><select id="s_lineEnding"><option value="\n">LF (Magento default)</option><option value="\r\n">CRLF (Windows)</option></select></div>
-    </div>
-    <div class="chk"><input type="checkbox" id="s_skipCancelled"> Skip cancelled orders</div>
-    <div class="chk"><input type="checkbox" id="s_skipRemovedLines"> Skip line items removed or refunded to quantity 0</div>
-    <div class="chk"><input type="checkbox" id="s_snapDiscount"> Round Discount % to a whole number when within 0.1% (Shopify rounds discounts to cents)</div>
-    <h2 style="margin-top:18px">Shipping method → Naviga</h2>
+    <h2>Shipping method → Naviga</h2>
+    <p class="sub">Matches when the Shopify shipping title <em>contains</em> the first column (not case-sensitive). The first match wins, and <code>*</code> is the fallback. Add a row when you add a new shipping option in Shopify.</p>
     <table class="map" id="m_shippingMap"><thead><tr><th>Shopify shipping title contains</th><th>Naviga “Shipping Method”</th><th>Shipping Code</th><th></th></tr></thead><tbody></tbody></table>
     <button class="btn secondary" data-add="shippingMap" style="margin-top:6px">+ Add row</button>
-    <h2 style="margin-top:18px">Payment gateway → Naviga</h2>
+    <h2 style="margin-top:22px">Payment gateway → Naviga</h2>
+    <p class="sub">Matches when the Shopify payment gateway <em>contains</em> the first column.</p>
     <table class="map" id="m_paymentMap"><thead><tr><th>Shopify gateway contains</th><th>Naviga “Payment Method”</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
     <button class="btn secondary" data-add="paymentMap" style="margin-top:6px">+ Add row</button>
   </div>
-  <div class="card">
-    <h2>Shipment file rules</h2>
-    <div class="grid2">
-      <div><label>Shopify order name prefix</label><input type="text" id="s_orderNamePrefix"></div>
-      <div><label>Web order PO pattern (regex). Rows that don't match are skipped.</label><input type="text" id="s_webOrderPattern"></div>
-    </div>
-    <div class="chk"><input type="checkbox" id="s_sendReceipt"> Email the customer their tracking number (Send Receipt = TRUE)</div>
-    <h2 style="margin-top:18px">Carrier</h2>
-    <table class="map" id="m_carrierMap"><thead><tr><th>Ship Method contains</th><th>Tracking company</th><th>Tracking URL ({n} = number)</th><th></th></tr></thead><tbody></tbody></table>
-    <button class="btn secondary" data-add="carrierMap" style="margin-top:6px">+ Add row</button>
-  </div>
   <div class="row"><button class="btn" id="saveSettings">Save settings</button><button class="btn secondary" id="resetSettings">Reset to defaults</button><span class="muted" id="settingsMsg"></span></div>
+  <div class="card" style="margin-top:16px">
+    <h2>Share settings between computers</h2>
+    <p class="sub">Settings are saved in this browser only. To use them on another computer or browser, export them here and import the file there.</p>
+    <div class="row"><button class="btn secondary" id="exportSettings">Export settings</button><label class="btn secondary" style="display:inline-block;margin:0;color:var(--accent);font-size:15px">Import settings<input type="file" id="importSettings" accept=".json,application/json" style="display:none"></label></div>
+  </div>
 </section>
 </main>
 
@@ -166,9 +151,10 @@ var DEFAULT_SETTINGS = {
   skipCancelled: true,
   skipRemovedLines: true,
   snapDiscount: true,
-  lineEnding: "\n",
+  lineEnding: "\r\n",           // client's Magento file uses CRLF
   // Shopify shipping method title (contains, case-insensitive) -> [Naviga Shipping Method, Shipping Code]
   shippingMap: [
+    ["Next Day Air", "UPS - UPS Next Day Air: 1 to 2 business days", "3"],
     ["Canada", "UPS - UPS Worldwide Express Canada: 5 to 7 business days", "29"],
     ["UPS Ground", "UPS - UPS Ground: 3 to 8 business days", "1"],
     ["Free", "Free Shipping - Free Shipping", "60"],
@@ -183,13 +169,11 @@ var DEFAULT_SETTINGS = {
   ],
   // Shipment file
   orderNamePrefix: "#",
-  webOrderPattern: "^\\d+$",
+  webOrderPattern: "^\\d{7}$",   // web orders are 7 digits (1088226); skips "5071", "FOR REVIEW", "THANK YOU,DAWN"…
   sendReceipt: true,
+  // Every Naviga shipment row is "UPS Mail Innovations"; ups.com tracks both 1Z… and 9241… numbers.
   carrierMap: [
-    ["UPS", "UPS", "https://www.ups.com/track?tracknum={n}"],
-    ["USPS", "USPS", "https://tools.usps.com/go/TrackConfirmAction?tLabels={n}"],
-    ["FedEx", "FedEx", "https://www.fedex.com/fedextrack/?trknbr={n}"],
-    ["*", "Other", ""]
+    ["*", "UPS", "https://www.ups.com/track?tracknum={n}"]
   ]
 };
 
@@ -376,15 +360,23 @@ function ShipmentsConverter(settings, emit) {
   this.orders = new Map(); this.re = new RegExp(settings.webOrderPattern);
   this.stats = { inputRows: 0, skippedNonWeb: 0, orders: 0, trackingNumbers: 0, duplicates: 0, warnings: [] };
 }
+// Naviga's real file (e.g. WEB_MF102225.CSV) has NO header row and 5 fixed columns:
+// "Invoice #","PO / reference (space-padded)","MM/DD/YYYY","Tracking # (space-padded)","Ship method"
+var NAVIGA_SHIP_POSITIONS = { "Invoice Number": 0, "PO Number": 1, "Invoice Date": 2, "Ups Track Nbr": 3, "Ship Method Description": 4 };
 ShipmentsConverter.prototype.row = function (r) {
-  if (!this.h) {
-    this.h = r; for (var i = 0; i < r.length; i++) this.idx[r[i].trim()] = i;
-    var need = ["PO Number", "Ups Track Nbr"];
-    var missing = need.filter(function (k) { return !(k in this.idx); }, this);
-    if (missing.length) throw new Error("This doesn't look like the Naviga shipment file. Missing columns: " + missing.join(", "));
-    return;
-  }
   if (r.length === 1 && r[0] === "") return;
+  if (!this.h) {
+    var hasHeader = r.some(function (c) { return /^\s*PO Number\s*$/i.test(c); });
+    if (hasHeader) {
+      this.h = r; for (var i = 0; i < r.length; i++) this.idx[r[i].trim()] = i;
+      var need = ["PO Number", "Ups Track Nbr"];
+      var missing = need.filter(function (k) { return !(k in this.idx); }, this);
+      if (missing.length) throw new Error("This doesn't look like the Naviga shipment file. Missing columns: " + missing.join(", "));
+      return;
+    }
+    if (r.length < 4) throw new Error("This doesn't look like the Naviga shipment file. Expected 5 columns (invoice, PO, date, tracking, ship method) but found " + r.length + ".");
+    this.h = "positional"; this.idx = NAVIGA_SHIP_POSITIONS;   // first row is data
+  }
   this.stats.inputRows++;
   var po = clean(r[this.idx["PO Number"]]), trk = clean(r[this.idx["Ups Track Nbr"]]);
   var method = this.idx["Ship Method Description"] !== undefined ? clean(r[this.idx["Ship Method Description"]]) : "";
@@ -492,11 +484,13 @@ function generateOrders(nOrders, emit, startNumber) {
   }
 }
 function generateShipments(nRows, emit, startNumber) {
-  emit(csvLine(["Invoice Number","PO Number","Invoice Date","Ups Track Nbr","Ship Method Description"], "all") + "\n");
+  // Same layout as Naviga's WEB_MF file: no header, PO padded to 15 chars, tracking padded to 40, CRLF.
+  var pad = function (s, n) { s = String(s); while (s.length < n) s += " "; return s; };
+  var nonWeb = ["THANK YOU,DAWN", "FOR REVIEW", "SAMPLES", "AUTHOR ORDER", "5071", ""];
   for (var i = 0; i < nRows; i++) {
-    var po = i % 15 === 0 ? "C CK " + (1000 + i) : String((startNumber || 1100000) + Math.floor(i * 0.9));
+    var po = i % 15 === 0 ? nonWeb[(i / 15) % nonWeb.length] : String((startNumber || 1100000) + Math.floor(i * 0.9));
     var trk = i % 4 === 0 ? "1Z0699430" + String(342546062 + i) : "9241999993653258" + String(3043893744 + i);
-    emit(csvLine([String(40000 + i), po, "11/19/2026", trk, i % 4 === 0 ? "UPS Ground" : "UPS Mail Innovations"], "all") + "\n");
+    emit(csvLine([String(1188000 + i), pad(po, 15), "11/19/2026", pad(trk, 40), "UPS Mail Innovations"], "all") + "\r\n");
   }
 }
 
@@ -504,9 +498,9 @@ if (typeof module !== "undefined") module.exports = { NAVIGA_HEADERS: NAVIGA_HEA
 
 
 /* ================= Page logic ================= */
-var STORE_KEY = "naviga-converter-settings-v1";
+var STORE_KEY = "naviga-converter-maps-v2";   // only the two mapping tables are stored
 var settings = loadSettings();
-function loadSettings(){ var s = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); try { var raw = localStorage.getItem(STORE_KEY); if (raw) Object.assign(s, JSON.parse(raw)); } catch(e){} return s; }
+function loadSettings(){ var s = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); try { var raw = JSON.parse(localStorage.getItem(STORE_KEY) || "null"); if (raw) ["shippingMap","paymentMap"].forEach(function(m){ if (Array.isArray(raw[m])) s[m] = raw[m]; }); } catch(e){} return s; }
 function $(s, el){ return (el||document).querySelector(s); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
 function fmt(n){ return Number(n).toLocaleString(); }
@@ -678,11 +672,9 @@ async function genFile(kind){
 $("#genOrders").onclick = function(){ genFile("orders"); };
 $("#genShip").onclick = function(){ genFile("ship"); };
 
-/* settings UI */
-var MAPS = ["shippingMap", "paymentMap", "carrierMap"], SCALARS = ["isbnSource","billToAccount","zipPrefix","lineEnding","orderNamePrefix","webOrderPattern"], BOOLS = ["skipCancelled","skipRemovedLines","snapDiscount","sendReceipt"];
+/* settings UI: only the two mapping tables are editable; everything else is fixed in DEFAULT_SETTINGS */
+var MAPS = ["shippingMap", "paymentMap"];
 function renderSettings(){
-  SCALARS.forEach(function(k){ var el = $("#s_"+k); el.value = k === "lineEnding" ? (settings[k] === "\r\n" ? "\\r\\n" : "\\n") : settings[k]; });
-  BOOLS.forEach(function(k){ $("#s_"+k).checked = !!settings[k]; });
   MAPS.forEach(function(m){
     var tb = $("#m_"+m+" tbody"); tb.innerHTML = "";
     settings[m].forEach(function(row){ addMapRow(m, row); });
@@ -694,16 +686,37 @@ function addMapRow(m, row){
   $(".x", tr).onclick = function(){ tr.remove(); };
   $("#m_"+m+" tbody").appendChild(tr);
 }
+function readMapsFromUI(){
+  var out = {};
+  MAPS.forEach(function(m){ out[m] = Array.from(document.querySelectorAll("#m_"+m+" tbody tr")).map(function(tr){ return Array.from(tr.querySelectorAll("input")).map(function(i){ return i.value.trim(); }); }).filter(function(r){ return r[0] !== ""; }); });
+  return out;
+}
+function storeMaps(maps){
+  MAPS.forEach(function(m){ settings[m] = maps[m]; });
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(maps)); return true; } catch(e){ return false; }
+}
 document.querySelectorAll("[data-add]").forEach(function(b){ b.onclick = function(){ addMapRow(b.dataset.add, ["","",""]); }; });
 $("#saveSettings").onclick = function(){
-  SCALARS.forEach(function(k){ var v = $("#s_"+k).value; settings[k] = k === "lineEnding" ? (v === "\\r\\n" ? "\r\n" : "\n") : v; });
-  BOOLS.forEach(function(k){ settings[k] = $("#s_"+k).checked; });
-  MAPS.forEach(function(m){ settings[m] = Array.from(document.querySelectorAll("#m_"+m+" tbody tr")).map(function(tr){ return Array.from(tr.querySelectorAll("input")).map(function(i){ return i.value; }); }).filter(function(r){ return r[0] !== ""; }); });
-  try { new RegExp(settings.webOrderPattern); } catch(e){ $("#settingsMsg").textContent = "Invalid PO pattern: " + e.message; return; }
-  var saved = true; try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch(e){ saved = false; }
-  $("#settingsMsg").textContent = saved ? "Saved." : "Applied for this session (this browser couldn't store them).";
+  var ok = storeMaps(readMapsFromUI());
+  $("#settingsMsg").textContent = ok ? "Saved." : "Applied for this session (this browser couldn't store them).";
 };
 $("#resetSettings").onclick = function(){ settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); try { localStorage.removeItem(STORE_KEY); } catch(e){} renderSettings(); $("#settingsMsg").textContent = "Defaults restored."; };
+$("#exportSettings").onclick = function(){
+  var data = { app: "naviga-converter", version: 1, exported: new Date().toISOString() };
+  var maps = readMapsFromUI(); MAPS.forEach(function(m){ data[m] = maps[m]; });
+  downloadBlob(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }), "naviga-converter-settings-" + stamp() + ".json");
+};
+$("#importSettings").onchange = async function(){
+  var f = this.files[0]; this.value = ""; if (!f) return;
+  try {
+    var data = JSON.parse(await f.text());
+    var ok = MAPS.every(function(m){ return Array.isArray(data[m]) && data[m].every(function(r){ return Array.isArray(r) && r.length >= 3; }); });
+    if (data.app !== "naviga-converter" || !ok) throw new Error("this isn't a settings file exported from this converter");
+    var maps = {}; MAPS.forEach(function(m){ maps[m] = data[m].map(function(r){ return [String(r[0]), String(r[1]), String(r[2])]; }); });
+    var saved = storeMaps(maps); renderSettings();
+    $("#settingsMsg").textContent = "Imported " + f.name + (saved ? " and saved." : " (applied for this session only).");
+  } catch(e){ $("#settingsMsg").textContent = "Couldn't import: " + e.message; }
+};
 renderSettings();
 </script>
 </body>
